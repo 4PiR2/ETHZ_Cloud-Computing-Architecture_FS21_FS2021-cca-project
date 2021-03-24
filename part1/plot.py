@@ -84,7 +84,7 @@ if __name__ == '__main__':
     plt.errorbar(data_l2[0], data_l2[2], xerr=data_l2[1], yerr=data_l2[3], marker='<', color='darkorange', linewidth=1.5, alpha=0.7, label='l2')
     plt.errorbar(data_llc[0], data_llc[2], xerr=data_llc[1], yerr=data_llc[3], marker='>', color='grey', linewidth=1.5, alpha=0.7, label='llc')
     plt.errorbar(data_membw[0], data_membw[2], xerr=data_membw[1], yerr=data_membw[3], marker='p', color='magenta', linewidth=1.5, alpha=0.7, label='membw')
-    plt.title("95th Percentile Latency", loc='center', fontsize=16, fontweight=1, color='black')
+    plt.title("memcache Server 95th Percentile Latency", loc='center', fontsize=16, fontweight=1, color='black')
     plt.xlabel("QPS [k]", fontsize=16)
     plt.ylabel("Latency [ms]", fontsize=16)
     plt.xticks([0, 10, 20, 30, 40, 50, 60], fontsize=14)
