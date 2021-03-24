@@ -19,7 +19,47 @@ def load_data(filename):
     x_std = []
     y = []
     y_std = []
-    for i in range(5000, 60000, 5000):
+    
+    # merge data
+    if filename == 'l2':
+        for i in [55000]:
+            data_x[50000].extend(data_x[i])
+            data_y[50000].extend(data_y[i])
+            del data_x[i]
+            del data_y[i]
+    if filename == 'l1d':
+        for i in [55000]:
+            data_x[50000].extend(data_x[i])
+            data_y[50000].extend(data_y[i])
+            del data_x[i]
+            del data_y[i]
+    if filename == 'membw':
+        for i in [55000]:
+            data_x[50000].extend(data_x[i])
+            data_y[50000].extend(data_y[i])
+            del data_x[i]
+            del data_y[i]
+    if filename == 'llc':
+        for i in [55000, 50000, 45000, 40000]:
+            data_x[35000].extend(data_x[i])
+            data_y[35000].extend(data_y[i])
+            del data_x[i]
+            del data_y[i]
+    if filename == 'l1i':
+        for i in [55000, 50000, 45000, 40000, 35000, 30000]:
+            data_x[25000].extend(data_x[i])
+            data_y[25000].extend(data_y[i])
+            del data_x[i]
+            del data_y[i]
+    if filename == 'cpu':
+        for i in [55000, 50000, 45000, 40000, 35000, 30000]:
+            data_x[25000].extend(data_x[i])
+            data_y[25000].extend(data_y[i])
+            del data_x[i]
+            del data_y[i]
+
+
+    for i in sorted(data_x.keys()):
         x.append(mean(data_x[i]) / 1000)
         x_std.append(stdev(data_x[i]) / 1000)
         y.append(mean(data_y[i]) / 1000)
