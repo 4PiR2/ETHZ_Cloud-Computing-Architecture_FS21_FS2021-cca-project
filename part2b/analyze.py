@@ -9,6 +9,7 @@ n_threads = [1, 2, 4, 8]
 reps = 3
 
 p = re.compile(r'^real\s+([0-9]+)m([0-9]+\.[0-9]+)s$')
+pferret = re.compile(r'^QUERY TIME: ([0-9]+\.[0-9]+) seconds$')
 pfft = re.compile(r'^Total time without initialization :\s+([0-9]+)$')
 pfreqmine = re.compile(r', the FPgrowth cost ([0-9]+\.[0-9]+) seconds$')
 
@@ -19,7 +20,13 @@ for i in range(len(benchmarks)):
 		for rep in range(reps):
 			with open(path_log+benchmarks[i]+'_'+str(n_threads[i_threads])+'_'+str(rep)+'.txt', 'r') as f:
 				for line in f:
-					if i == 4:
+					if i == 3:
+						m = pferret.match(line)
+						if m:
+							t = float(m.group(1))
+							result[i,i_threads,rep] = t
+							break
+					elif i == 4:
 						m = pfft.match(line)
 						if m:
 							t = int(m.group(1)) / 1e6
