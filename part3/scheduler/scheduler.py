@@ -55,20 +55,6 @@ def scheduler_8_core():
     run_shell_cmd('kubectl create -f parsec-canneal.yaml')
     run_shell_cmd('kubectl get jobs')
 
-# def scheduler_2_core():
-#     run_shell_cmd('kubectl create -f parsec-dedup.yaml')
-#     run_shell_cmd('kubectl create -f parsec-fft.yaml')
-#     run_shell_cmd('kubectl get jobs')
-
-# def scheduler_4_core():
-#     run_shell_cmd('kubectl create -f parsec-canneal.yaml')
-#     run_shell_cmd('kubectl create -f parsec-freqmine.yaml')
-#     run_shell_cmd('kubectl get jobs')
-
-# def scheduler_8_core():
-#     run_shell_cmd('kubectl create -f parsec-ferret.yaml')
-#     run_shell_cmd('kubectl create -f parsec-blackscholes.yaml')
-#     run_shell_cmd('kubectl get jobs')
 
 if __name__ == '__main__':
     # start memcached
