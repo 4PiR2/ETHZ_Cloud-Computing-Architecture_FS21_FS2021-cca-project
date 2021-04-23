@@ -48,14 +48,14 @@ if __name__ == '__main__':
     ax1.tick_params(axis='y')
     ax1.axhline(2, color='black', linestyle='--')
     ax1.text(3, 2.05, 'SLO')
-    # ax1.set_yticks([i for i in range(1, 6)])
+    ax1.set_yticks([i for i in range(6)])
 
     ax2 = ax1.twinx() 
-    ax2.set_ylabel('CPU Utilization')
+    ax2.set_ylabel('CPU Utilization [%]')
     line2, = ax2.plot(x, z, color='darkblue', marker='^', label='CPU Utilization', alpha=0.7)
     ax2.tick_params(axis='y')
-    ax2.set_yticks([i for i in range(10, 110, 10)])
-    ax2.set_yticklabels([str(i)+"%" for i in range(10, 110, 10)])
+    ax2.set_yticks([i for i in range(0, 110, 25)])
+    ax2.set_yticklabels([str(i)+"%" for i in range(0, 110, 25)])
 
     plt.title("1-Core memcached Server Performance", loc='center', color='black')
     plt.legend(handles=[line1, line2])

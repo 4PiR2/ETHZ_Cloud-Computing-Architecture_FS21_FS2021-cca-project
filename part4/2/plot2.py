@@ -50,11 +50,11 @@ if __name__ == '__main__':
     ax1.text(90, 1.93, 'SLO')
 
     ax2 = ax1.twinx() 
-    ax2.set_ylabel('CPU Utilization')
+    ax2.set_ylabel('CPU Utilization [%]')
     line2, = ax2.plot(x, z, color='darkblue', marker='^', label='CPU Utilization', alpha=0.7)
     ax2.tick_params(axis='y')
-    ax2.set_yticks([i for i in range(10, 210, 20)])
-    ax2.set_yticklabels([str(i)+"%" for i in range(10, 210, 20)])
+    ax2.set_yticks([i for i in range(0, 210, 25)])
+    ax2.set_yticklabels([str(i)+"%" for i in range(0, 210, 25)])
 
     plt.title("2-Core memcached Server Performance", loc='center', color='black')
     plt.legend(handles=[line1, line2], bbox_to_anchor=(0, 0, 1, 0.95))
