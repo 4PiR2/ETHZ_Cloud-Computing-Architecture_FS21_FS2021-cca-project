@@ -1,0 +1,14 @@
+Job:  parsecblackscholes
+Job time:  0:03:12
+Job:  parseccanneal
+Job time:  0:04:22
+Job:  parsecdedup
+Job time:  0:00:57
+Job:  parsecferret
+Job time:  0:04:27
+Job:  parsecfreqmine
+Job time:  0:04:24
+Job:  parsec-splash2x-fft
+Job time:  0:02:12
+Job:  memcached
+Total time: 0:04:27
