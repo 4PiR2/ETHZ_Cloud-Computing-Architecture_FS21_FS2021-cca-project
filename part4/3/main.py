@@ -52,6 +52,8 @@ class Job:
 	# 	'./bin/parsecmgmt -a run -p blackscholes -i native -n 2',
 	# 	cpuset_cpus='0', detach=True, remove=True, name='parsec')
 	def start(self, cpus, t):
+		if 'fft' in self.name:
+			t = 2 ** int(np.log2(t))
 		cpus_str = ','.join([str(cpu) for cpu in cpus])
 		self.container = client.containers.run(
 			'anakli/parsec:' + self.name + '-native-reduced',
@@ -110,28 +112,32 @@ class Job:
 
 
 class Queue:
-	def __init__(self, cpu_set, job_list, with_mc=False):
+	def __init__(self, cpu_set, job_list, with_mc=False, t=None):
 		self.cpu_set = cpu_set
 		self.jobs = [Job(i) for i in job_list]
 		self.with_mc = with_mc
+		self.t = t
 		self.index = 0
 		self.need_init = self.index < len(self.jobs)
 
 	def tick(self):
 		if self.index >= len(self.jobs):
 			return True
+		t = self.t
+		if t is None:
+			t = len(self.cpu_set)
 		if self.need_init:
-			self.jobs[self.index].start(self.cpu_set, len(self.cpu_set))
+			self.jobs[self.index].start(self.cpu_set, t)
 			self.need_init = False
 		if self.jobs[self.index].status() == 'exited':
-			t = self.jobs[self.index].log()
+			tt = self.jobs[self.index].log()
 			self.jobs[self.index].remove()
-			if t is None:
+			if tt is None:
 				self.jobs[self.index].log_operation('fail')
 				self.index = len(self.jobs)
 			self.index += 1
 			if self.index < len(self.jobs):
-				self.jobs[self.index].start(self.cpu_set, len(self.cpu_set))
+				self.jobs[self.index].start(self.cpu_set, t)
 			else:
 				return True
 		return False
@@ -327,7 +333,8 @@ while True:
 		break
 """
 
-q1 = Queue([0,1], range(6))
+"""
+q1 = Queue([0, 1], range(6))
 
 f1 = False
 while True:
@@ -335,4 +342,25 @@ while True:
 	p = log_cpu()
 	f1 = q1.tick()
 	if f1:
+		break
+"""
+
+q0 = Queue([0, 1], range(6), t=3)
+mc = Mc([3, 2])
+
+f0 = False
+while True:
+	time.sleep(1)
+	p = log_cpu()
+	cpu_rate = np.sum(np.array(p)[mc.cpu_set[:mc.mode]])
+	if cpu_rate > 90:
+		mc.mode2()
+		if q0.cpu_set != [0, 1]:
+			q0.update([0, 1])
+	elif cpu_rate < 90:
+		mc.mode1()
+		if q0.cpu_set != [0, 1, 2]:
+			q0.update([0, 1, 2])
+	f0 = q0.tick()
+	if f0:
 		break
