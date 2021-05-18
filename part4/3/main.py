@@ -1,5 +1,6 @@
 import os
 import re
+import subprocess
 import sys
 import time
 import docker
@@ -39,6 +40,7 @@ class Job:
 	def __init__(self, i):
 		self.name = job_names[i]
 		self.container = None
+		self.pid = None
 
 	def log_operation(self, *args):
 		line = str(time.time()) + '\t' + self.name.split('-')[-1] + '\t' + '\t'.join([str(arg) for arg in args])
@@ -53,7 +55,8 @@ class Job:
 	# 	cpuset_cpus='0', detach=True, remove=True, name='parsec')
 	def start(self, cpus, t):
 		if 'fft' in self.name:
-			t = 2 ** int(np.log2(t))
+			# t = 2 ** int(np.log2(t))
+			t = 4
 		cpus_str = ','.join([str(cpu) for cpu in cpus])
 		self.container = client.containers.run(
 			'anakli/parsec:' + self.name + '-native-reduced',
@@ -110,6 +113,17 @@ class Job:
 			return t
 		return None
 
+	def get_cpu_rate(self):
+		rate = None
+		p = subprocess.Popen(['top', '-b', '-n', '1'], stdout=subprocess.PIPE, universal_newlines=True)
+		lines = p.stdout.readlines()
+		for line in lines:
+			fields = line.split()
+			if fields and fields[-1] == self.name.split('-')[-1]:
+				self.pid = fields[0]
+				rate = float(fields[8])
+		return rate
+
 
 class Queue:
 	def __init__(self, cpu_set, job_list, with_mc=False, t=None):
@@ -155,16 +169,21 @@ class Queue:
 			self.jobs[self.index].resume()
 
 	def update(self, cpu_set, with_mc=False):
-		self.cpu_set = cpu_set
-		self.with_mc = with_mc
-		if not self.need_init and self.index < len(self.jobs):
-			self.jobs[self.index].update(cpu_set)
+		if self.cpu_set != cpu_set:
+			self.cpu_set = cpu_set
+			self.with_mc = with_mc
+			if not self.need_init and self.index < len(self.jobs):
+				self.jobs[self.index].update(cpu_set)
 
 	def add_job(self, job_list):
 		self.need_init = self.index == len(self.jobs)
 		self.jobs.extend([Job(i) for i in job_list])
 		if self.need_init:
 			self.tick()
+
+	def get_cpu_rate(self):
+		if self.index < len(self.jobs):
+			return self.jobs[self.index].get_cpu_rate()
 
 
 class Mc:
@@ -196,6 +215,14 @@ class Mc:
 		logfile_mc.write(str(time.time()) + '\t' + cpus_str + '\n')
 		logfile_mc.flush()
 
+	def get_cpu_rate(self):
+		p = subprocess.Popen(['top', '-b', '-n', '1', '-p', self.pid], stdout=subprocess.PIPE, universal_newlines=True)
+		fields = p.stdout.readlines()[-1].split()
+		rate = float(fields[8])
+		logfile_cpu.write(str(time.time()) + '\t' + str(rate) + '\n')
+		logfile_cpu.flush()
+		return rate
+
 
 if '-p' in sys.argv:
 	pull_images()
@@ -207,19 +234,15 @@ if '-r' in sys.argv:
 	input('removed, press any key to continue')
 
 """
-q0 = Queue([2], [], True)
-q1 = Queue([0], [5, 1])
-q2 = Queue([1], [3])
-dynamic = [0, 4, 2]
+q0 = Queue([2], [1, 2], True)
+q1 = Queue([0, 1], [0, 5, 3, 4])
 mc = Mc([3, 2])
-
 f0 = False
 f1 = False
-f2 = False
 while True:
 	time.sleep(1)
 	p = log_cpu()
-	cpu_rate = np.sum(np.array(p)[mc.cpu_set[:mc.mode]])
+	cpu_rate = mc.get_cpu_rate()
 	if q0.with_mc:
 		if f0 or cpu_rate > 90:
 			mc.mode2()
@@ -229,104 +252,7 @@ while True:
 			q0.resume()
 	f0 = q0.tick()
 	f1 = q1.tick()
-	f2 = q2.tick()
-	if dynamic and f1:
-		q1.add_job([dynamic.pop(0)])
-		f1 = q1.tick()
-	if dynamic and f2:
-		q2.add_job([dynamic.pop(0)])
-		f2 = q2.tick()
-	if dynamic and f0:
-		q0.add_job([dynamic.pop(0)])
-		f0 = q0.tick()
-	if f1 and f2 and not f0 and q0.cpu_set != [0, 1]:
-		q0.update([0, 1])
-		q0.resume()
-	if f1 and not f0 and q0.cpu_set != [0]:
-		q0.update([0])
-		q0.resume()
-	if f2 and not f0 and q0.cpu_set != [1]:
-		q0.update([1])
-		q0.resume()
-	if f2 and not f1 and q1.cpu_set != [0, 1]:
-		q1.update([0, 1])
-	if f1 and not f2 and q2.cpu_set != [0, 1]:
-		q2.update([0, 1])
-	if f0 and f1 and f2:
-		break
-"""
-
-"""
-q0 = Queue([2], [], True)
-q1 = Queue([0, 1], [5, 1])
-q2 = Queue([0, 1], [3])
-dynamic = [0, 4, 2]
-mc = Mc([3, 2])
-
-f0 = False
-f1 = False
-f2 = False
-while True:
-	time.sleep(1)
-	p = log_cpu()
-	cpu_rate = np.sum(np.array(p)[mc.cpu_set[:mc.mode]])
-	if q0.with_mc:
-		if f0 or cpu_rate > 90:
-			mc.mode2()
-			q0.pause()
-		elif cpu_rate < 90:
-			mc.mode1()
-			q0.resume()
-	f0 = q0.tick()
-	f1 = q1.tick()
-	f2 = q2.tick()
-	if dynamic and f1:
-		q1.add_job([dynamic.pop(0)])
-		f1 = q1.tick()
-	if dynamic and f2:
-		q2.add_job([dynamic.pop(0)])
-		f2 = q2.tick()
-	if dynamic and f0:
-		q0.add_job([dynamic.pop(0)])
-		f0 = q0.tick()
-	if f1 and not f0 and q0.cpu_set != [0, 1]:
-		q0.update([0, 1])
-		q0.resume()
-	if f2 and not f0 and q0.cpu_set != [0, 1]:
-		q0.update([0, 1])
-		q0.resume()
-	if f0 and f1 and f2:
-		break
-"""
-
-"""
-q0 = Queue([2], [], True)
-q1 = Queue([0, 1], [3, 5, 1])
-dynamic = [0, 4, 2]
-mc = Mc([3, 2])
-
-f0 = False
-f1 = False
-while True:
-	time.sleep(1)
-	p = log_cpu()
-	cpu_rate = np.sum(np.array(p)[mc.cpu_set[:mc.mode]])
-	if q0.with_mc:
-		if f0 or cpu_rate > 90:
-			mc.mode2()
-			q0.pause()
-		elif cpu_rate < 90:
-			mc.mode1()
-			q0.resume()
-	f0 = q0.tick()
-	f1 = q1.tick()
-	if dynamic and f1:
-		q1.add_job([dynamic.pop(0)])
-		f1 = q1.tick()
-	if dynamic and f0:
-		q0.add_job([dynamic.pop(0)])
-		f0 = q0.tick()
-	if f1 and not f0 and q0.cpu_set != [0, 1]:
+	if f1 and not f0:
 		q0.update([0, 1])
 		q0.resume()
 	if f0 and f1:
@@ -334,33 +260,62 @@ while True:
 """
 
 """
-q1 = Queue([0, 1], range(6))
-
-f1 = False
-while True:
-	time.sleep(1)
-	p = log_cpu()
-	f1 = q1.tick()
-	if f1:
-		break
-"""
-
 q0 = Queue([0, 1], range(6), t=3)
 mc = Mc([3, 2])
-
 f0 = False
 while True:
 	time.sleep(1)
 	p = log_cpu()
-	cpu_rate = np.sum(np.array(p)[mc.cpu_set[:mc.mode]])
+	cpu_rate = mc.get_cpu_rate()
 	if cpu_rate > 90:
 		mc.mode2()
-		if q0.cpu_set != [0, 1]:
-			q0.update([0, 1])
+		q0.update([0, 1])
 	elif cpu_rate < 90:
 		mc.mode1()
-		if q0.cpu_set != [0, 1, 2]:
-			q0.update([0, 1, 2])
+		q0.update([0, 1, 2])
 	f0 = q0.tick()
 	if f0:
 		break
+mc.mode2()
+"""
+
+q0 = Queue([0, 1], [0, 3, 5, 1], t=3)
+q1 = Queue([0, 1], [2, 4], t=2)
+mc = Mc([3, 2])
+f0 = False
+f1 = False
+flag = False
+while True:
+	time.sleep(1)
+	p = log_cpu()
+	cpu_rate = mc.get_cpu_rate()
+	if not f0:
+		if cpu_rate > 90:
+			mc.mode2()
+			q0.update([0, 1])
+		elif cpu_rate < 90:
+			mc.mode1()
+			q0.update([0, 1, 2])
+		f0 = q0.tick()
+		if not flag and q0.index == len(q0.jobs) - 1:
+			f1 = q1.tick()
+			rate0 = q0.get_cpu_rate()
+			rate1 = q1.get_cpu_rate()
+			if (rate0 is not None and rate0 >= 101) or \
+					('fft' in q1.jobs[q1.index].name and rate1 is not None and rate1 >= 101):
+				q1.pause()
+				flag = True
+	else:
+		if flag:
+			q1.resume()
+			flag = False
+		if cpu_rate > 90:
+			mc.mode2()
+			q1.update([0, 1])
+		elif cpu_rate < 90:
+			mc.mode1()
+			q1.update([0, 1, 2])
+		f1 = q1.tick()
+	if f0 and f1:
+		break
+mc.mode1()
