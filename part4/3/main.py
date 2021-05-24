@@ -4,24 +4,18 @@ import subprocess
 import sys
 import time
 import docker
-import psutil
 import numpy as np
 
 logfile_dir = sys.argv[1] + '/'
 logfile_operation = open(logfile_dir + 'operation.txt', 'w')
-logfile_cpu = open(logfile_dir + 'cpu.txt', 'w')
 logfile_mc = open(logfile_dir + 'mc.txt', 'w')
 
 job_names = ['blackscholes', 'canneal', 'dedup', 'ferret', 'splash2x-fft', 'freqmine']
 
 client = docker.from_env()
 
-
-def log_cpu():
-	p = psutil.cpu_percent(percpu=True)
-	logfile_cpu.write(str(time.time()) + '\t' + '\t'.join([str(x) for x in p]) + '\n')
-	logfile_cpu.flush()
-	return p
+my_env = os.environ.copy()
+my_env['COLUMNS'] = '200'
 
 
 def pull_images():
@@ -55,13 +49,11 @@ class Job:
 	# 	cpuset_cpus='0', detach=True, remove=True, name='parsec')
 	def start(self, cpus, t):
 		if 'fft' in self.name:
-			# t = 2 ** int(np.log2(t))
-			t = 4
+			t = 2 ** int(np.log2(t))
 		cpus_str = ','.join([str(cpu) for cpu in cpus])
 		self.container = client.containers.run(
 			'anakli/parsec:' + self.name + '-native-reduced',
 			'./bin/parsecmgmt -a run -p ' + self.name.replace('-', '.') + ' -i native -n ' + str(t),
-			# mem_limit='6m', memswap_limit='6m',
 			cpuset_cpus=cpus_str, detach=True, name='parsec-' + self.name)
 		self.log_operation('start', cpus_str, t)
 
@@ -114,8 +106,8 @@ class Job:
 		return None
 
 	def get_cpu_rate(self):
-		rate = None
-		p = subprocess.Popen(['top', '-b', '-n', '1'], stdout=subprocess.PIPE, universal_newlines=True)
+		rate = 0
+		p = subprocess.Popen(['top', '-b', '-n', '1'], stdout=subprocess.PIPE, universal_newlines=True, env=my_env)
 		lines = p.stdout.readlines()
 		for line in lines:
 			fields = line.split()
@@ -123,6 +115,20 @@ class Job:
 				self.pid = fields[0]
 				rate = float(fields[8])
 		return rate
+
+	def get_t(self):
+		t = 1
+		if self.pid is None:
+			self.get_cpu_rate()
+		if self.pid is not None:
+			try:
+				p = subprocess.Popen(['grep', 'Threads', '/proc/' + self.pid + '/status'], stdout=subprocess.PIPE,
+				                     universal_newlines=True)
+				line = p.stdout.readline()
+				t = int(line.split()[1])
+			except:
+				pass
+		return t
 
 
 class Queue:
@@ -184,6 +190,14 @@ class Queue:
 	def get_cpu_rate(self):
 		if self.index < len(self.jobs):
 			return self.jobs[self.index].get_cpu_rate()
+		else:
+			return 0
+
+	def get_t(self):
+		if self.index < len(self.jobs):
+			return self.jobs[self.index].get_t()
+		else:
+			return 0
 
 
 class Mc:
@@ -218,9 +232,10 @@ class Mc:
 	def get_cpu_rate(self):
 		p = subprocess.Popen(['top', '-b', '-n', '1', '-p', self.pid], stdout=subprocess.PIPE, universal_newlines=True)
 		fields = p.stdout.readlines()[-1].split()
-		rate = float(fields[8])
-		logfile_cpu.write(str(time.time()) + '\t' + str(rate) + '\n')
-		logfile_cpu.flush()
+		try:
+			rate = float(fields[8])
+		except:
+			rate = 0
 		return rate
 
 
@@ -233,89 +248,48 @@ remove_all()
 if '-r' in sys.argv:
 	input('removed, press any key to continue')
 
-"""
-q0 = Queue([2], [1, 2], True)
-q1 = Queue([0, 1], [0, 5, 3, 4])
+cpu_thresh = 90
+q0 = Queue([0, 1], [2, 0, 1], t=3)
+q1 = Queue([0, 1], [4], t=2)
+q2 = Queue([0, 1], [3, 5], t=3)
 mc = Mc([3, 2])
 f0 = False
 f1 = False
+f2 = False
 while True:
-	time.sleep(1)
-	p = log_cpu()
-	cpu_rate = mc.get_cpu_rate()
-	if q0.with_mc:
-		if f0 or cpu_rate > 90:
-			mc.mode2()
-			q0.pause()
-		elif cpu_rate < 90:
-			mc.mode1()
-			q0.resume()
-	f0 = q0.tick()
-	f1 = q1.tick()
-	if f1 and not f0:
-		q0.update([0, 1])
-		q0.resume()
-	if f0 and f1:
-		break
-"""
-
-"""
-q0 = Queue([0, 1], range(6), t=3)
-mc = Mc([3, 2])
-f0 = False
-while True:
-	time.sleep(1)
-	p = log_cpu()
-	cpu_rate = mc.get_cpu_rate()
-	if cpu_rate > 90:
-		mc.mode2()
-		q0.update([0, 1])
-	elif cpu_rate < 90:
-		mc.mode1()
-		q0.update([0, 1, 2])
-	f0 = q0.tick()
-	if f0:
-		break
-mc.mode2()
-"""
-
-q0 = Queue([0, 1], [0, 3, 5, 1], t=3)
-q1 = Queue([0, 1], [2, 4], t=2)
-mc = Mc([3, 2])
-f0 = False
-f1 = False
-flag = False
-while True:
-	time.sleep(1)
-	p = log_cpu()
-	cpu_rate = mc.get_cpu_rate()
+	time.sleep(0.5)
+	rate_mc = mc.get_cpu_rate()
 	if not f0:
-		if cpu_rate > 90:
+		if rate_mc > cpu_thresh:
 			mc.mode2()
 			q0.update([0, 1])
-		elif cpu_rate < 90:
+		else:
 			mc.mode1()
 			q0.update([0, 1, 2])
 		f0 = q0.tick()
-		if not flag and q0.index == len(q0.jobs) - 1:
-			f1 = q1.tick()
-			rate0 = q0.get_cpu_rate()
-			rate1 = q1.get_cpu_rate()
-			if (rate0 is not None and rate0 >= 101) or \
-					('fft' in q1.jobs[q1.index].name and rate1 is not None and rate1 >= 101):
+		if not f1:
+			if q0.get_t() > 1:
 				q1.pause()
-				flag = True
-	else:
-		if flag:
-			q1.resume()
-			flag = False
-		if cpu_rate > 90:
+			else:
+				q1.resume()
+				f1 = q1.tick()
+	elif not f1:
+		if rate_mc > cpu_thresh:
 			mc.mode2()
 			q1.update([0, 1])
-		elif cpu_rate < 90:
+		else:
 			mc.mode1()
 			q1.update([0, 1, 2])
+		q1.resume()
 		f1 = q1.tick()
-	if f0 and f1:
+	elif not f2:
+		if rate_mc > cpu_thresh:
+			mc.mode2()
+			q2.update([0, 1])
+		else:
+			mc.mode1()
+			q2.update([0, 1, 2])
+		f2 = q2.tick()
+	else:
 		break
-mc.mode1()
+mc.mode2()

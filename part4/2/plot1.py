@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 from statistics import mean, stdev
 
+import numpy as np
+
+
 def load_data(filename_l, filename_u):
     u_data = []
     with open(filename_u, 'r') as fi:
@@ -42,22 +45,24 @@ if __name__ == '__main__':
     plt.figure(figsize=(9.6, 7.2))
 
     fig, ax1 = plt.subplots()
-    ax1.set_xlabel("QPS [k]")
+    ax1.set_xlabel("QPS [K]")
     ax1.set_ylabel("Latency [ms]")
     line1, = ax1.plot(x, y, color='darkred', marker='.', label='P95 Latency', alpha=0.7)
     ax1.tick_params(axis='y')
     ax1.axhline(2, color='black', linestyle='--')
     ax1.text(3, 2.05, 'SLO')
-    ax1.set_yticks([i for i in range(6)])
+    ax1.set_yticks(np.arange(0, 5.1, 0.5))
+    ax1.set_xlim(0, 80)
+    ax1.set_ylim(0, 5)
 
     ax2 = ax1.twinx() 
     ax2.set_ylabel('CPU Utilization [%]')
     line2, = ax2.plot(x, z, color='darkblue', marker='^', label='CPU Utilization', alpha=0.7)
     ax2.tick_params(axis='y')
-    ax2.set_yticks([i for i in range(0, 110, 25)])
-    ax2.set_yticklabels([str(i)+"%" for i in range(0, 110, 25)])
+    ax2.set_yticks([i for i in range(0, 110, 10)])
+    ax2.set_ylim(0, 100)
 
-    plt.title("1-Core memcached Server Performance", loc='center', color='black')
+    plt.title("1-Core Memcached Server Performance", loc='center', color='black')
     plt.legend(handles=[line1, line2])
     fig.tight_layout()
     plt.savefig('c1.pdf')

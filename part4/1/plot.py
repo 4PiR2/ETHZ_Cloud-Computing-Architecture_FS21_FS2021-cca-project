@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 from statistics import mean, stdev
 
+import numpy as np
+
+
 def load_data(filename):
     data_x = {}
     data_y = {}
@@ -19,7 +22,7 @@ def load_data(filename):
     x_std = []
     y = []
     y_std = []
-    
+
     # # merge data
     # if filename == 'l2':
     #     for i in [55000]:
@@ -81,10 +84,12 @@ if __name__ == '__main__':
     # plt.errorbar(data_l2[0], data_l2[2], xerr=data_l2[1], yerr=data_l2[3], marker='<', color='darkorange', linewidth=1.5, alpha=0.7, label='l2')
     # plt.errorbar(data_llc[0], data_llc[2], xerr=data_llc[1], yerr=data_llc[3], marker='>', color='grey', linewidth=1.5, alpha=0.7, label='llc')
     # plt.errorbar(data_membw[0], data_membw[2], xerr=data_membw[1], yerr=data_membw[3], marker='p', color='magenta', linewidth=1.5, alpha=0.7, label='membw')
-    plt.title("memcached Server 95th Percentile Latency Averaged over 3 Runs", loc='center', fontsize=16, fontweight=1, color='black')
-    plt.xlabel("QPS [k]", fontsize=16)
+    plt.title("Memcached Server 95th Percentile Latency Averaged over 3 Runs", loc='center', fontsize=16, fontweight=1, color='black')
+    plt.xlabel("QPS [K]", fontsize=16)
     plt.ylabel("Latency [ms]", fontsize=16)
-    # plt.xticks([0, 10, 20, 30, 40, 50, 60], fontsize=14)
-    # plt.yticks([0, 2, 4, 6, 8, 10], fontsize=14)
+    plt.xticks(np.arange(0, 121, 20))
+    plt.yticks(np.arange(0, 4.51, 0.5))
+    plt.xlim(0)
+    plt.ylim(0)
     plt.legend(fontsize='x-large')
     plt.savefig('p95.pdf')
