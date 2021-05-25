@@ -4,7 +4,6 @@ import subprocess
 import sys
 import time
 import docker
-import numpy as np
 
 logfile_dir = sys.argv[1] + '/'
 logfile_operation = open(logfile_dir + 'operation.txt', 'w')
@@ -42,14 +41,7 @@ class Job:
 		logfile_operation.write(line + '\n')
 		logfile_operation.flush()
 
-	# docker run --cpuset-cpus="0" -d --rm --name parsec anakli/parsec:blackscholes-native-reduced ./bin/parsecmgmt -a run -p blackscholes -i native -n 2
-	# container = client.containers.run(
-	# 	'anakli/parsec:blackscholes-native-reduced',
-	# 	'./bin/parsecmgmt -a run -p blackscholes -i native -n 2',
-	# 	cpuset_cpus='0', detach=True, remove=True, name='parsec')
 	def start(self, cpus, t):
-		if 'fft' in self.name:
-			t = 2 ** int(np.log2(t))
 		cpus_str = ','.join([str(cpu) for cpu in cpus])
 		self.container = client.containers.run(
 			'anakli/parsec:' + self.name + '-native-reduced',
@@ -203,7 +195,6 @@ class Queue:
 class Mc:
 	def __init__(self, cpu_set):
 		pid_path = '/var/run/memcached/memcached.pid'
-		# pid_path = 'test.pid'
 		with open(pid_path, 'r') as f:
 			self.pid = f.readline().strip()
 		self.cpu_set = cpu_set

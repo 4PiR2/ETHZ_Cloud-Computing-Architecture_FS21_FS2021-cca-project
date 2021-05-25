@@ -52,7 +52,7 @@ if __name__ == '__main__':
     ax1.axhline(2, color='black', linestyle='--')
     ax1.text(3, 2.05, 'SLO')
     ax1.set_yticks(np.arange(0, 5.1, 0.5))
-    ax1.set_xlim(0, 80)
+    ax1.set_xlim(0, 110)
     ax1.set_ylim(0, 5)
 
     ax2 = ax1.twinx() 
